@@ -230,7 +230,7 @@ def evaluate_algorithm(trainSet, n_folds, pred_function, algorithm, *args):
 minmax_whole = get_minmax(dataset)
 dataScaled = scale_dataset(dataset, minmax_whole)
 scores = evaluate_algorithm(dataScaled, 5, predict_all, coef_update_sgd, 0.1, 100)
-print(sum(scores)/5, 'logistic reg on pima')
+print(sum(scores)/5, 'logistic reg on pima cv age')
 
 '''use linear regression for binary classification on pima diabetes'''
 '''linear regression functional form'''
@@ -268,22 +268,37 @@ def predict_all_LinReg(testSet, coef):
 
 # note the learning rate is different from logistic regression
 scores_LinReg = evaluate_algorithm(dataScaled, 5, predict_all_LinReg, coef_update_sgd_LinReg, 0.01, 40)
-print(sum(scores_LinReg)/5,'Linear reg on pima')
+print(sum(scores_LinReg)/5,'Linear reg on pima cv avg')
 
-''' testing a single case linear/logistic regression'''
+''' testing a single case linear/logistic regression with histogram'''
 #change the 
 trainScaled, testScaled = split_data(dataScaled, 0.8)
-coef_LinReg = coef_update_sgd(trainScaled, 0.01, 40)
+#true y
+y_true = [round(row[-1]) for row in trainScaled]
 
-y_train_pred = predict_all(trainScaled,coef_LinReg)
-y_train_true = [round(row[-1]) for row in trainScaled]
-accuracy_train = accuracy_metric(y_train_true, y_train_pred)
-print(accuracy_train,'accuracy_train')
+#get logistic prediction
+coef = coef_update_sgd(trainScaled, 0.1, 40)
+y_pred_logR = [predict(row,coef) for row in trainScaled]
+print(accuracy_metric(y_true, [round(y) for y in y_pred_logR]),'accuracy_logReg')
 
-y_pred = predict_all(testScaled,coef_LinReg)
-y_true = [row[-1] for row in testScaled]
-accuracy_test = accuracy_metric(y_true, y_pred)
-print(accuracy_test,'accuracy_test')
+#get linear prediction
+coef_linR = coef_update_sgd_LinReg(trainScaled, 0.01, 40)
+y_pred_linR = [predict_LinReg(row, coef_linR) for row in trainScaled]
+print(accuracy_metric(y_true, [round(y) for y in y_pred_linR]),'accuracy_linReg')
+
+"""plot distribution of linear and logistic predictions"""
+import numpy
+from matplotlib import pyplot
+
+#x = [random.gauss(2,1) for _ in range(400)]
+#y = [random.gauss(0,2) for _ in range(400)]
+bins = numpy.linspace(-1, 1.5, 75)
+
+pyplot.hist(y_pred_logR, bins, alpha = 0.5, label = 'logReg predict')
+pyplot.hist(y_pred_linR, bins, alpha = 0.5, label = 'linReg predict')
+pyplot.legend(loc = 'upper right')
+pyplot.savefig('fig1')
+#pyplot.show()
 
 
 '''Binary classification, logistic vs linear'''
@@ -311,13 +326,16 @@ def repeat_evaluation(times):
   scores_log = 0
   scores_lin = 0
   for i in range(times):
-    s_logReg = evaluate_algorithm(tumor_scaled, 4, predict_all, coef_update_sgd, 10, 50)
+    s_logReg = evaluate_algorithm(tumor_scaled, 4, predict_all, coef_update_sgd, 10, 25)
     scores_log += sum(s_logReg)/4/times
 
-    s_linReg = evaluate_algorithm(tumor_scaled, 4, predict_all_LinReg, coef_update_sgd_LinReg, 0.1, 40)
+    s_linReg = evaluate_algorithm(tumor_scaled, 4, predict_all_LinReg, coef_update_sgd_LinReg, 0.1, 20)
     scores_lin += sum(s_linReg)/4/times
-  return 'avg scores log =',scores_log, 'avg scores lin =',scores_lin
+
+  return 'avg scores log =', scores_log, 'avg scores lin =',scores_lin
+
 #test
-'''linear regression is better than logistic regression if balanced data. When adding outlier [100,1], both accuries decreased, with less for logistic regression.
-#times = 50
-#print(repeat_evaluation(times))
+'''linear regression is better than logistic regression if balanced data. When adding outlier [100,1], both accuries decreased, with less for logistic regression.'''
+times = 50
+print(repeat_evaluation(times))
+
